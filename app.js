@@ -4,7 +4,31 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+const defaultAllowedOrigins = [
+    "http://localhost:3000"
+];
+
+const extraAllowedOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...extraAllowedOrigins])];
+
+app.use(cors({
+    origin(origin, callback) {
+        // Allow server-to-server and non-browser requests with no origin.
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Not allowed by CORS"));
+    }
+}));
 app.use(express.json());
 
 const feedbackRoutes = require("./routes/feedback");
