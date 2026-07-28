@@ -6,60 +6,168 @@ router.get("/", async (req, res) => {
 
     try {
 
-        // Monthly feedback
-        const [monthly] = await db.execute(`
+        const {
+            search = "",
+            from = "",
+            to = "",
+            rating = ""
+        } = req.query;
+
+        let where = " WHERE 1=1 ";
+        let params = [];
+
+        // Search
+        if (search) {
+
+            where += `
+                AND (
+                    company_name LIKE ?
+                    OR customer_name LIKE ?
+                    OR driver_name LIKE ?
+                    OR booking_id LIKE ?
+                )
+            `;
+
+            const value = `%${search}%`;
+
+            params.push(value, value, value, value);
+
+        }
+
+        // From Date
+        if (from) {
+
+            where += " AND DATE(trip_date) >= ? ";
+            params.push(from);
+
+        }
+
+        // To Date
+        if (to) {
+
+            where += " AND DATE(trip_date) <= ? ";
+            params.push(to);
+
+        }
+
+        // Rating
+        if (rating) {
+
+            where += " AND overall_rating LIKE ? ";
+            params.push(`${"⭐".repeat(Number(rating))}%`);
+
+        }
+
+        //------------------------------------
+        // Monthly
+        //------------------------------------
+
+        const [monthly] = await db.execute(
+
+            `
             SELECT
-                MONTH(created_at) AS month,
+                MONTH(trip_date) AS month,
                 COUNT(*) AS total
             FROM feedback
-            GROUP BY MONTH(created_at)
-            ORDER BY MONTH(created_at)
-        `);
+            ${where}
+            GROUP BY MONTH(trip_date)
+            ORDER BY MONTH(trip_date)
+            `,
+            params
 
-        // Rating distribution
-        const [ratings] = await db.execute(`
+        );
+
+        //------------------------------------
+        // Rating
+        //------------------------------------
+
+        const [ratings] = await db.execute(
+
+            `
             SELECT
                 overall_rating,
-                COUNT(*) AS total
+                COUNT(*) total
             FROM feedback
+            ${where}
             GROUP BY overall_rating
             ORDER BY overall_rating
-        `);
+            `,
+            params
 
-        // Company-wise
-        const [companies] = await db.execute(`
+        );
+
+        //------------------------------------
+        // Companies
+        //------------------------------------
+
+        const [companies] = await db.execute(
+
+            `
             SELECT
                 company_name,
-                COUNT(*) AS total
+                COUNT(*) total
             FROM feedback
+            ${where}
             GROUP BY company_name
             ORDER BY total DESC
-            LIMIT 10
-        `);
+            `,
+            params
 
-        // Driver-wise
-        const [drivers] = await db.execute(`
+        );
+
+        //------------------------------------
+        // Drivers
+        //------------------------------------
+
+        const [drivers] = await db.execute(
+
+            `
             SELECT
                 driver_name,
-                ROUND(AVG(overall_rating),1) AS rating
+                ROUND(
+                    AVG(
+                        CASE
+
+                            WHEN overall_rating LIKE '⭐⭐⭐⭐⭐%' THEN 5
+                            WHEN overall_rating LIKE '⭐⭐⭐⭐%' THEN 4
+                            WHEN overall_rating LIKE '⭐⭐⭐%' THEN 3
+                            WHEN overall_rating LIKE '⭐⭐%' THEN 2
+                            WHEN overall_rating LIKE '⭐%' THEN 1
+
+                        END
+                    ),
+                    1
+                ) rating
             FROM feedback
+            ${where}
             GROUP BY driver_name
             ORDER BY rating DESC
-            LIMIT 10
-        `);
+            `,
+            params
+
+        );
 
         res.json({
+
             monthly,
             ratings,
             companies,
             drivers
+
         });
 
-    } catch(err){
+    }
+
+    catch (err) {
 
         console.log(err);
 
-        res.status(500).json(err);
+        res.status(500).json({
+
+            success: false,
+            message: err.message
+
+        });
 
     }
 

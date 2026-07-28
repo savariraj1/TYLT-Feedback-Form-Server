@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const frontendBaseUrl =
-    process.env.FRONTEND_BASE_URL || "http://localhost:3000";
 
 router.post("/", async (req, res) => {
 
@@ -50,7 +48,8 @@ router.post("/", async (req, res) => {
 
         );
 
-        const link = `${frontendBaseUrl}/?feedback=${feedback_id}`;
+        const link =
+`http://127.0.0.1:5500/client/index.html?feedback=${feedback_id}`;
 
         res.json({
 
