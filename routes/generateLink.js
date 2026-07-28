@@ -49,7 +49,7 @@ router.post("/", async (req, res) => {
         );
 
         const link =
-`http://127.0.0.1:5500/client/index.html?feedback=${feedback_id}`;
+`https://tylt-feedback-form-client.vercel.app/index.html?feedback=${feedback_id}`;
 
         res.json({
 
