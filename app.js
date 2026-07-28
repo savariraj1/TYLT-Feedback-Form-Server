@@ -4,7 +4,25 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = new Set([
+    "https://tylt-feedback-form-client.vercel.app",
+    "http://localhost:3000"
+]);
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.has(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 const feedbackRoutes = require("./routes/feedback");
